@@ -1,20 +1,32 @@
-const chai = require('chai')
-global.expect = chai.expect
-const fs = require('fs')
-const jsdom = require('mocha-jsdom')
-const path = require('path')
+// helpers.js
+
+const { JSDOM } = require('jsdom');
+const fs = require('fs');
+const path = require('path');
 const babel = require('babel-core');
 
-const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf-8')
+async function loadChai() {
+  const chai = await import('chai');
+  return chai;
+}
 
-const babelResult = babel.transformFileSync(
-  path.resolve(__dirname, '..', 'index.js'), {
+async function setupDOM() {
+  const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf-8');
+  const babelResult = babel.transformFileSync(path.resolve(__dirname, '..', 'index.js'), {
     presets: ['env']
-  }
-);
+  });
+  const src = babelResult.code;
 
-const src = babelResult.code
+  const { window } = new JSDOM(html, { runScripts: 'outside-only' });
+  global.window = window;
+  global.document = window.document;
 
-jsdom({
-  html, src
-});
+  const scriptEl = window.document.createElement('script');
+  scriptEl.textContent = src;
+  window.document.body.appendChild(scriptEl);
+}
+
+module.exports = {
+  loadChai,
+  setupDOM,
+};
